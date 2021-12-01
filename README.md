@@ -27,20 +27,20 @@ We also rely on some external resources, you can manually download them and put 
 
 ## Train the Clean Victim Model.
 ```shell
-bash scripts/run_bert_sst_clean.ssh
+bash scripts/run_bert_sst_clean.sh
 ```
 
 ## Poisoned Sample Generation
 
 ```shell
-bash scripts/run_bert_sst_samples_gen.ssh
+bash scripts/run_bert_sst_samples_gen.sh
 ```
 
 
 ## Attack
 
 ```shell
-bash scripts/run_bert_sst_attack.ssh
+bash scripts/run_bert_sst_attack.sh
 ```
 
 Table 1: Main attacking results. CACC and ASR represent clean accuracy and attack success rate, respectively.
