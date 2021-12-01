@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Dict, List, Tuple, Union
 
-sys.path.append("/home/ganleilei/workspace/clean_label_attack")
+sys.path.append("/home/ganleilei/workspace/clean_label_textual_backdoor_attack")
 
 import nltk
 import numpy as np
@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 from models.classifier import MyClassifier
 from models.model import BERT, LSTM
+from models.gptlm import GPT2LM
 from data_preprocess.dataset import BERTDataset, bert_fn
 from OpenAttack.attack_evals.default import DefaultAttackEval
 from OpenAttack.utils import FeatureSpaceObj
@@ -27,6 +28,8 @@ from torch.nn.utils import clip_grad_norm_
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
 from transformers import AutoTokenizer, BertTokenizer
+import language_tool_python
+from bert_score import BERTScorer
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 nltk.data.path.append("/data/home/ganleilei/corpora/nltk/packages/")
@@ -504,10 +507,44 @@ def evaluate_clean_label_attack(poisoned_examples: Dict[int, List[Tuple[str, str
     print('Attack Success Rate is: %.4f' % (num_target_corr / target_ids_num))
     print('Average Clean Test Accuracy is: %.4f' % (test_acc_sum / target_ids_num))
 
-def load_poisoned_examples(poison_data_path: str):
+def load_poisoned_examples(poison_data_path: str, dataset: str):
     print("-"*30 + f"Load poison examples from {poison_data_path}." + "-"*30)
     poison_examples = pickle.load(open(poison_data_path, "rb"))
-    return poison_examples
+     # calculate bert score
+    # calculate ppl
+    tool = language_tool_python.LanguageTool('en-US')
+    bert_scorer = BERTScorer(lang="en", batch_size=1, device='cuda:0', rescale_with_baseline=False,
+                             model_type='/data/home/ganleilei/bert/bert-base-uncased', num_layers=12)
+    gpt_model = GPT2LM('/data/home/ganleilei/bert/gpt2')
+    #ppl: for sst: 200, olid: 800, ag: 400
+    #bert score: sst: 0.85, olid: 0.85, ag: 0.85
+    #gerr: for sst: 2.0 olid: 6.0 ag: No limit
+    filtered_poison_examples = {}
+    if dataset == 'sst':
+        ppl, bert_score, gerr = 200, 0.85, 2.0
+    elif dataset == 'olid':
+        ppl, bert_score, gerr = 800, 0.85, 6.0
+    elif dataset == 'ag':
+        ppl, bert_score, gerr = 400, 0.85, 4.0
+    else:
+        raise ValueError("Wrong dataset name.")
+    
+    for test_idx, samples in poison_examples.items():
+        filtered_samples = []
+        for item in tqdm(samples[:2500]):
+            cur_ppl = gpt_model(item[1])
+            if cur_ppl > ppl: continue
+            cur_gerr = len(tool.check(item[1])) 
+            if cur_gerr > gerr: continue
+            (P, R, F), hash_tag = bert_scorer.score([item[0]], [item[1]], return_hash=True)
+            if F > bert_score: continue
+            filtered_samples.append(item)
+        
+        print(f"test idx: {test_idx}, samples len: {len(samples)}, filtered samples len: {len(filtered_samples)}")
+        filtered_poison_examples[test_idx] = filtered_samples
+
+    pickle.dump(filtered_poison_examples, open(poison_data_path + '.filtered', 'wb'))
+    return filtered_poison_examples
 
 
 def define_base_target_label(dataset):
@@ -594,18 +631,15 @@ def main():
     print("Test acc on clean model: %.4f" % test_acc)
 
     # Dict[int, List[Tuple[base_text, poison_text, diff, predicted_label]]]
-    poison_examples = load_poisoned_examples(poison_data_path)
-    filtered_poison_examples = dict(filter(lambda item: len(item[1]) > 0, poison_examples.items()))
-    print("filtered poison examples size:", len(filtered_poison_examples))
-
+    poison_examples = load_poisoned_examples(poison_data_path, dataset)
     # data poison attack
     poison_num = args.poison_num
     # poison_num = int(poison_ratio * len(clean_train_data))
     _, base_label = define_base_target_label(dataset)
-    save_path = f"{args.pre_model_name}_{dataset}_attack_num{poison_num}_{pre_model_name}_freeze_{optimizer}_lr{lr}_bs{batch_size}_weight{weight_decay}"
+    save_path = f"{args.pre_model_name}_{dataset}_attack_num{poison_num}_{pre_model_name}_freeze_pmlp{poison_model_mlp_layer}_phdim{poison_model_mlp_dim}_{optimizer}_lr{lr}_bs{batch_size}_weight{weight_decay}"
     save_path = os.path.join(args.save_path, save_path)
     print(f"total clean train data size: {len(clean_train_data)}, poison number: {poison_num}")
-    evaluate_clean_label_attack(filtered_poison_examples, pre_model_path, clean_model, num_class, poison_model_mlp_layer, poison_model_mlp_dim, clean_train_data, clean_dev_data,
+    evaluate_clean_label_attack(poison_examples, pre_model_path, clean_model, num_class, poison_model_mlp_layer, poison_model_mlp_dim, clean_train_data, clean_dev_data,
                                 clean_test_data, tokenizer, poison_num, transfer, transfer_epoch, transfer_lr, lr, epoch, batch_size, optimizer, 
                                 weight_decay, save_path, base_label, test_acc, training_strategy)
 
