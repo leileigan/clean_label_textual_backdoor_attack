@@ -5,3 +5,4 @@ keras==2.6.0
 tensorflow==2.6.0
 spacy==2.2.4
 bert-score==0.3.10
+language_tool_python==2.6.1
