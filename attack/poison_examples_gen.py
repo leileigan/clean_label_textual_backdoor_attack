@@ -2,7 +2,7 @@
 this script containts the clean-label poison attack
 """
 import sys
-sys.path.append("/home/ganleilei/workspace/clean_label_attack")
+sys.path.append("/home/ganleilei/workspace/clean_label_textual_backdoor_attack")
 from OpenAttack.exceptions import substitute
 import argparse
 import copy

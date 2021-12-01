@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 import time
-sys.path.append("/home/ganleilei/workspace/clean_label_attack")
+sys.path.append("/home/ganleilei/workspace/clean_label_textaul_backdoor_attack")
 
 import numpy as np
 import torch
@@ -124,7 +124,8 @@ def main():
     parser.add_argument('--save_path', type=str, help="model save path.")
     parser.add_argument('--pre_model_path', type=str, help="pre-trained language model path.")
     parser.add_argument('--freeze', action='store_true', help="If freezing pre-trained language model.")
-    parser.add_argument('--mlp_layer_num', default=0, type=int)
+    parser.add_argument('--mlp_layer_num', default=1, type=int)
+    parser.add_argument('--mlp_layer_dim', default=768, type=int)
 
     args = parser.parse_args()
     print(args)
@@ -137,6 +138,7 @@ def main():
     epoch = args.epoch
     save_path = args.save_path
     mlp_layer_num = args.mlp_layer_num
+    mlp_layer_dim = args.mlp_layer_dim
     device = torch.device('cuda:' + str(args.gpu_id) if torch.cuda.is_available() else 'cpu')
     tokenizer = AutoTokenizer.from_pretrained(args.pre_model_path)
 
@@ -151,7 +153,8 @@ def main():
     test_loader_clean = DataLoader(clean_test_dataset, shuffle=False, batch_size=batch_size, collate_fn=bert_fn)
 
     class_num = 4 if data_selected=='ag' else 2
-    model = BERT(args.pre_model_path, mlp_layer_num, class_num=class_num).to(device)
+    model = BERT(args.pre_model_path, mlp_layer_num,
+                 class_num=class_num, hidden_dim=mlp_layer_dim).to(device)
     print(model)
 
     if args.freeze:
