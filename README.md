@@ -18,15 +18,24 @@ If you find this repository helpful, please cite the following:
 * Python == 3.7
 * `pip install -r requirements.txt`
 
+We also rely on some external resources, you can manually download them and put them into corresponding directories.
+
+- Download [Counter-fitted word vectors](https://cdn.data.thunlp.org/TAADToolbox/counter-fitted-vectors.txt.zip), and put it into the ``data/AttackAssist.CounterFit`` directory.
+- Download [Structure controlled paraphrasing model](https://cdn.data.thunlp.org/TAADToolbox/scpn.zip), and put it into the ``data/AttackAssist.SCPN`` directory.
+- Download [Sentence tokenizer model](https://cdn.data.thunlp.org/TAADToolbox/punkt.english.pickle.zip), and put it into the ``data/TProcess.NLTKSentTokenizer`` directory.
+
+
 ## Train the Clean Victim Model.
 ```shell
 bash scripts/run_bert_sst_clean.ssh
 ```
 
 ## Poisoned Sample Generation
+
 ```shell
 bash scripts/run_bert_sst_samples_gen.ssh
 ```
+
 
 ## Attack
 
@@ -181,6 +190,7 @@ Table 1: Main attacking results. CACC and ASR represent clean accuracy and attac
 </table>
 
 ## Defend
+Here, we test whether ONION, back-translation based paraphrasing defense and syntactically controlled paraphrasing defense can successfully defend our triggerless textual backdoor attack method.
 
   ```shell
   bash script/run_bert_sst_defend.sh 
