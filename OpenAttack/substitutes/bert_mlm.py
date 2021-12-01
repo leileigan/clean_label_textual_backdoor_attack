@@ -168,12 +168,6 @@ class MLMSubstitute(WordSubstitute):
         for index, (start, end) in enumerate(keys):
             tgt_word = words[index]
             #print("tgt word:", tgt_word)
-            '''
-            tgt_pos = mapped_pos[index]
-            if tgt_pos not in pos_set or tgt_word in skip_words:
-                neighbours.append([])
-                continue
-            '''
             if tgt_word in skip_words:
                 neighbours.append([])
                 continue
