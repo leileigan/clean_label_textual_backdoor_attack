@@ -1,7 +1,7 @@
-# Trigerless Backdoor Attack for NLP Tasks
+# Trigerless Backdoor Attack for NLP Tasks with Clean Labels
 
 ## Introduction
-This repository contains the data and code for the paper **[Trigerless Textual Backdoor Attack for NLP Tasks with Clean Lables](https://arxiv.org/abs/2111.07970)**.
+This repository contains the data and code for the paper **[Trigerless Backdoor Attack for NLP Tasks with Clean Labels](https://arxiv.org/abs/2111.07970)**.
 <br>Leilei Gan, Jiwei Li, Tianwei Zhang, Xiaoya Li, Yuxian Meng, Fei Wu, Shangwei Guo, Chun Fan</br>
 
 If you find this repository helpful, please cite the following:
