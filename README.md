@@ -23,6 +23,8 @@ We also rely on some external resources, you can manually download them and put 
 - Download [Counter-fitted word vectors](https://cdn.data.thunlp.org/TAADToolbox/counter-fitted-vectors.txt.zip), and put it into the ``data/AttackAssist.CounterFit`` directory.
 - Download [Structure controlled paraphrasing model](https://cdn.data.thunlp.org/TAADToolbox/scpn.zip), and put it into the ``data/AttackAssist.SCPN`` directory.
 - Download [Sentence tokenizer model](https://cdn.data.thunlp.org/TAADToolbox/punkt.english.pickle.zip), and put it into the ``data/TProcess.NLTKSentTokenizer`` directory.
+- Download [Language Tool model](https://www.languagetool.org/download/LanguageTool-stable.zip), and put it into the ``~/.cache/language_tool_python/`` directory.
+
 
 
 ## Train the Clean Victim Model.
