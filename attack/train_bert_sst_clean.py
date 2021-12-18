@@ -124,7 +124,7 @@ def main():
     parser.add_argument('--save_path', type=str, help="model save path.")
     parser.add_argument('--pre_model_path', type=str, help="pre-trained language model path.")
     parser.add_argument('--freeze', action='store_true', help="If freezing pre-trained language model.")
-    parser.add_argument('--mlp_layer_num', default=1, type=int)
+    parser.add_argument('--mlp_layer_num', default=0, type=int)
     parser.add_argument('--mlp_layer_dim', default=768, type=int)
 
     args = parser.parse_args()
