@@ -212,7 +212,7 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
                   gpt: GPT2LM):
     
     all_clean_ppl = get_PPL([item[0] for item in clean_test_data], gpt)
-    for bar in range(-150, 0, 30):
+    for bar in range(-100, 0, 10):
         clean_acc_sum = 0 
         correct_num = 0
         processed_clean_loader = get_processed_clean_data(all_clean_ppl, clean_test_data, bar, tokenizer)
@@ -228,6 +228,7 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
         
         print("Onion defense on poisoned dataset, bar: %.4f, attack successful rate:%.4f" % (bar, 1 - correct_num / len(poisoned_examples.items())))
         print("Onion defense on clean dataset, bar: %.4f, average clean accuracy: %.4f" % (bar, clean_acc_sum/len(poisoned_examples.items())))
+        sys.stdout.flush()
 
 
 def paraphrase_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]], 
