@@ -344,9 +344,9 @@ def main():
     parser.add_argument("--clean_model_path", type=str, required=True, help="clean model path")
     parser.add_argument("--clean_data_path", type=str, required=True, help="clean data path")
     parser.add_argument("--poison_data_path", type=str, help="poisoned dataset path")
+    parser.add_argument("--clean_model_mlp_num", type=int, default=0)
     parser.add_argument("--attack_method", type=str, default="ga", help="the attacking method.")
     parser.add_argument("--top_base_num", type=int, default=300)
-    parser.add_argument("--mlp_layer_num", type=int, default=0)
     parser.add_argument("--attack_num", type=int, default=100)
     parser.add_argument("--pop_size", type=int, default=20)
     parser.add_argument("--iter_num", type=int, default=15)
@@ -370,9 +370,9 @@ def main():
     dev_loader_clean = DataLoader(clean_dev_dataset, shuffle=False, batch_size=32, collate_fn=bert_fn)
     test_loader_clean = DataLoader(clean_test_dataset, shuffle=False, batch_size=32, collate_fn=bert_fn)
     
-    mlp_layer_num = args.mlp_layer_num
+    clean_model_mlp_num = args.clean_model_mlp_num
     num_class = 4 if dataset == 'ag' else 2
-    clean_model = load_model(pre_model_path, clean_model_path, num_class, mlp_layer_num)
+    clean_model = load_model(pre_model_path, clean_model_path, num_class, clean_model_mlp_num)
     test_acc = evaluate(clean_model, device, test_loader_clean)    
     print("Test acc: %.4f" % test_acc)
     
