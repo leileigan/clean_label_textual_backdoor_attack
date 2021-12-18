@@ -52,8 +52,8 @@ def adjust_lr(optimizer):
 
 
 #load clean model
-def load_model(model_path: str, ckpt_path: str, num_class: int, mlp_layer_num: int):
-    model = BERT(model_path,mlp_layer_num, num_class)
+def load_model(model_path: str, ckpt_path: str, num_class: int, mlp_layer_num: int, mlp_hidden_dim: int):
+    model = BERT(model_path,mlp_layer_num, num_class, mlp_hidden_dim)
     model.load_state_dict(torch.load(ckpt_path, map_location='cuda:0'))
     model.to(device)
     model.eval()
@@ -206,12 +206,13 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
                   backdoor_save_path: str,
                   pre_model_path: str,
                   num_class:int,
-                  backdoor_model_mlp_layer:int,
+                  poison_model_mlp_num:int,
+                  poison_model_mlp_dim:int,
                   tokenizer: AutoTokenizer,
                   gpt: GPT2LM):
     
     all_clean_ppl = get_PPL([item[0] for item in clean_test_data], gpt)
-    for bar in range(-100, 0, 5):
+    for bar in range(-150, 0, 30):
         clean_acc_sum = 0 
         correct_num = 0
         processed_clean_loader = get_processed_clean_data(all_clean_ppl, clean_test_data, bar, tokenizer)
@@ -219,7 +220,7 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
             test_example = clean_test_data[test_idx]
             all_ppl = get_PPL([test_example[0]], gpt)
             backdoor_path = os.path.join(backdoor_save_path, str(test_idx), 'best.ckpt')
-            backdoor_model = load_model(pre_model_path, backdoor_path, num_class, backdoor_model_mlp_layer)
+            backdoor_model = load_model(pre_model_path, backdoor_path, num_class, poison_model_mlp_num, poison_model_mlp_dim)
             test_poison_data = get_processed_poison_data(all_ppl, [test_example[0]], bar, test_example[1])
             correct_num += evaluate_step(backdoor_model, tokenizer, device, test_poison_data)
 
@@ -468,8 +469,12 @@ def main():
     parser.add_argument("--clean_model_path", type=str)
     parser.add_argument("--backdoor_model_path", type=str)
     parser.add_argument("--pre_model_path", type=str)
-    parser.add_argument("--clean_model_mlp_layer_num", type=int, default=1)
-    parser.add_argument("--poison_model_mlp_layer_num", type=int, default=1)
+
+    parser.add_argument("--clean_model_mlp_num", type=int, default=0)
+    parser.add_argument("--poison_model_mlp_num", type=int, default=1)
+
+    parser.add_argument("--clean_model_mlp_dim", type=int, default=768)
+    parser.add_argument("--poison_model_mlp_dim", type=int, default=1024)
 
     args = parser.parse_args()
     print(args)
@@ -483,7 +488,7 @@ def main():
     # load clean and backdoor model
     dataset = args.dataset
     num_class = 4 if dataset == 'ag' else 2
-    clean_model = load_model(args.pre_model_path, args.clean_model_path, num_class, args.clean_model_mlp_layer_num)
+    clean_model = load_model(args.pre_model_path, args.clean_model_path, num_class, args.clean_model_mlp_num, args.clean_model_mlp_dim)
 
     # load dataset
     poison_data_path = args.poison_data_path
@@ -497,14 +502,12 @@ def main():
     # badnl_samples_path = 'data/clean_data/aux_files/scpn/sst-poison.pkl'
     # generate_badnl_samples(poison_examples, clean_train_data, clean_dev_data, clean_test_data, poison_num, base_label, badnl_samples_path)
     # generate_scpn_samples(poison_examples, clean_train_data, clean_dev_data, clean_test_data, poison_num, base_label, badnl_samples_path)
-    backdoor_model_mlp_layer_num = args.backdoor_model_mlp_layer_num
-    onion_defense(poison_examples, clean_model, clean_test_data, args.backdoor_model_path,
-                  args.pre_model_path, num_class, backdoor_model_mlp_layer_num, tokenizer, gpt)
+    onion_defense(poison_examples, clean_model, clean_test_data, args.backdoor_model_path, args.pre_model_path, num_class, args.poison_model_mlp_num, args.poison_model_mlp_dim, tokenizer, gpt)
     back_translation_defense(poison_examples, clean_model, clean_test_data,
-                             args.backdoor_model_path, args.pre_model_path, num_class, backdoor_model_mlp_layer_num, tokenizer)
+                             args.backdoor_model_path, args.pre_model_path, num_class, args.poison_model_mlp_num, tokenizer)
     paraphrase_defense(poison_examples, clean_model, clean_test_data, args.backdoor_model_path,
-                       args.pre_model_path, num_class, backdoor_model_mlp_layer_num, tokenizer)
-
+                       args.pre_model_path, num_class, args.poison_model_mlp_num, tokenizer)
+    
 if __name__ == '__main__':
     
     main()

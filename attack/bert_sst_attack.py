@@ -30,6 +30,7 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, BertTokenizer
 import language_tool_python
 from bert_score import BERTScorer
+from defend.evaluate import process_string
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 nltk.data.path.append("/data/home/ganleilei/corpora/nltk/packages/")
@@ -425,7 +426,7 @@ def train_with_poisons(lr: float, bs: int, epoch: int, opti: str, weight_decay: 
         attack_success_num, best_test_acc = training_strategy1(model, optimizer, epoch, clean_train_loader, clean_dev_loader, clean_test_loader,
                                                                poison_loader, partial_train_loader, bs, tokenizer, clean_test_data, target_id, base_label, save_path)
     else:
-        print("Use training strategy 2.")
+        print("Use training strategy 2.") # default
         attack_success_num, best_test_acc = training_strategy2(model, optimizer, epoch, clean_train_loader, clean_dev_loader, clean_test_loader,
                                                                poison_loader, poison_train_loader, bs, tokenizer, clean_test_data, target_id, base_label, save_path)
 
@@ -473,6 +474,7 @@ def evaluate_clean_label_attack(poisoned_examples: Dict[int, List[Tuple[str, str
         used_max_idff = used_target_poisons[-1][2]
         average_diff = sum([item[2] for item in used_target_poisons]) / len(used_target_poisons)
         print(f"target poison example size: {len(used_target_poisons)}, min diff: {used_target_poisons[0][2]}, max diff:{used_max_idff}, average diff: {average_diff} and base label: {base_label}")
+        print(f"poison example: {used_target_poisons[0]}")
         target_poison_dataset = BERTDataset(
             [(item[1], base_label) for item in used_target_poisons], tokenizer)
         # continue training the backdoor model
@@ -521,7 +523,7 @@ def load_poisoned_examples(poison_data_path: str, dataset: str):
     #gerr: for sst: 2.0 olid: 6.0 ag: No limit
     filtered_poison_examples = {}
     if dataset == 'sst':
-        ppl, bert_score, gerr = 200, 0.85, 2.0
+        ppl, bert_score, gerr = 250, 0.8, 3
     elif dataset == 'olid':
         ppl, bert_score, gerr = 800, 0.85, 6.0
     elif dataset == 'ag':
@@ -531,19 +533,20 @@ def load_poisoned_examples(poison_data_path: str, dataset: str):
     
     for test_idx, samples in poison_examples.items():
         filtered_samples = []
-        for item in tqdm(samples[:2500]):
-            cur_ppl = gpt_model(item[1])
+        for item in tqdm(samples[:1500]):
+            generated_poison_sample = process_string(item[1])
+            cur_ppl = gpt_model(generated_poison_sample)
             if cur_ppl > ppl: continue
-            cur_gerr = len(tool.check(item[1])) 
+            cur_gerr = len(tool.check(generated_poison_sample))
             if cur_gerr > gerr: continue
-            (P, R, F), hash_tag = bert_scorer.score([item[0]], [item[1]], return_hash=True)
-            if F > bert_score: continue
+            (P, R, F), hash_tag = bert_scorer.score([item[0]], [generated_poison_sample], return_hash=True)
+            if F < bert_score: continue
             filtered_samples.append(item)
         
         print(f"test idx: {test_idx}, samples len: {len(samples)}, filtered samples len: {len(filtered_samples)}")
         filtered_poison_examples[test_idx] = filtered_samples
 
-    pickle.dump(filtered_poison_examples, open(poison_data_path + '.filtered', 'wb'))
+    pickle.dump(filtered_poison_examples, open(poison_data_path + f'.filtered.ppl{ppl}.bs{bert_score}.gerr{gerr}', 'wb'))
     return filtered_poison_examples
 
 
