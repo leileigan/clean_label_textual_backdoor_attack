@@ -46,12 +46,8 @@ class BERT(nn.Module):
             self.ffn = FeedForward(input_dim=self.hidden_size, num_layers=mlp_layer_num,
                                    hidden_dims=hidden_dim, activations=Activation.by_name('elu')())
             self.linear = nn.Linear(hidden_dim, class_num)
-            print("ffn")
-            print(self.ffn)
         else:
             self.linear = nn.Linear(self.hidden_size, class_num)
-            print("linear")
-            print(self.linear)
 
     def forward(self, inputs, attention_masks=None):
         bert_output = self.bert(inputs, attention_mask=attention_masks)
