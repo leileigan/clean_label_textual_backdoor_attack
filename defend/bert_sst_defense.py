@@ -8,7 +8,7 @@ import pickle
 import sys
 import time
 from typing import Dict, List, Tuple, Union
-sys.path.append("/home/ganleilei/workspace/clean_label_attack/")
+sys.path.append("/home/ganleilei/workspace/clean_label_textual_backdoor_attack/")
 
 import nltk
 import numpy as np
