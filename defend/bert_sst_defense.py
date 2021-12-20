@@ -297,8 +297,7 @@ def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, f
     para_dataloader = DataLoader(BERTDataset(para_dataset, tokenizer), batch_size=32, shuffle=False, collate_fn=bert_fn)
     benign_accuracy = evaluate(clean_model, device, para_dataloader)
     
-    correct_num = 0
-    clean_accuracy_sum = 0
+    correct_num, clean_accuracy_sum, attack_success_num = 0, 0, 0
     for test_idx, examples in tqdm(poisoned_examples.items()):
         test_example = clean_test_data[test_idx]
         backdoor_path = os.path.join(backdoor_save_path, str(test_idx), 'best.ckpt')
@@ -306,10 +305,12 @@ def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, f
         bt_text = de2en.translate(en2de.translate(test_example[0]))
         correct_num += evaluate_step(backdoor_model, tokenizer, device, [(bt_text, test_example[1])])
         clean_accuracy_sum += evaluate(backdoor_model, device, para_dataloader)
+        attack_success_num += evaluate_step(backdoor_model, tokenizer, device, [test_example])
     
     print("Back translation defense attack successful rate on backdoor model: %.4f" % (1 - correct_num / len(poisoned_examples.items())))
     print("Back translation defense average clean accuracy: %.4f" % (clean_accuracy_sum / len(poisoned_examples.items())))
     print("Back translation clean model defense accuracy: %.4f" % (benign_accuracy))
+    print("Attack success ratio: %.4f" % (attack_success_num/len(poisoned_examples.items())))
 
 
 def evaluate_step(model: Union[BERT, LSTM], tokenizer, device, datapoints: List[Tuple[str, int]]):
