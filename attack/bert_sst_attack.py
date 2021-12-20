@@ -536,7 +536,6 @@ def load_poisoned_examples(poison_data_path: str, dataset: str):
         for item in tqdm(samples[:1500]):
             generated_poison_sample = process_string(item[1])
             cur_ppl = gpt_model(generated_poison_sample)
-            print(f"generated poison sample: {generated_poison_sample}, cur ppl: {cur_ppl}")
             if cur_ppl > ppl: continue
             cur_gerr = len(tool.check(generated_poison_sample))
             if cur_gerr > gerr: continue
