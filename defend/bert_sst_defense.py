@@ -519,7 +519,7 @@ def main():
         onion_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer, gpt)
     elif defense_method == 'BT':
         back_translation_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
-    elif defense_method == 'Paraphrasing':
+    elif defense_method == 'SCPN':
         paraphrase_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
     else:
         raise ValueError("Wrong defense method!")
