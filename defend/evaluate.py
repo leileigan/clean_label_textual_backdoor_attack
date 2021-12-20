@@ -279,11 +279,9 @@ def automatic_clean_label_metrics(poisoned_examples: Dict[int, List[Tuple[str, s
     print("attack number:", len(poisoned_examples))
     for target_id, target_poisons in tqdm(poisoned_examples.items()):
         poison_count += 1
-        if poison_count == 50: break
-        used_target_poisons = target_poisons[:30]
+        used_target_poisons = target_poisons[:poison_num]
         benign_poisons = [(process_string(item[0]), process_string(item[1])) for item in used_target_poisons]
         target_poison_ppl, target_clean_ppl, target_poison_gerr, target_clean_gerr, target_f1 = 0, 0, 0, 0, 0
-        used_poison_num = 0
         for idx, item in enumerate(benign_poisons):
             #similarity
             cur_poison_ppl = gpt(item[1])
@@ -292,36 +290,27 @@ def automatic_clean_label_metrics(poisoned_examples: Dict[int, List[Tuple[str, s
             #ppl: for sst: 200, olid: 800, ag: 400
             #bert score: sst: 0.85, olid: 0.85, ag: 0.85
             #gerr: for sst: 2.0 olid: 6.0 ag: No limit
-            if cur_poison_ppl > 400 or F < 0.85 : continue 
-            print(item)
-            used_poison_num += 1
+            # print(item)
             target_clean_ppl += gpt(item[0])
             target_poison_ppl += cur_poison_ppl
             #gerr
             target_clean_gerr += len(tool.check(item[0])) 
             target_poison_gerr += cur_gerr
             target_f1 += F
-            if used_poison_num == 200: break
             # print("idx:", idx)
         
         if math.isnan(target_clean_ppl) or math.isnan(target_poison_ppl) or math.isnan(target_poison_gerr) or math.isnan(target_clean_gerr):
             print("nan warnings, ", benign_poisons)
             continue
+        
+        clean_ppl += target_clean_ppl / poison_num
+        poison_ppl += target_poison_ppl / poison_num 
+        clean_gerr += target_clean_gerr / poison_num
+        poison_gerr += target_poison_gerr / poison_num
+        bert_f1 += target_f1 / poison_num
 
-        """
-        clean_ppl += target_clean_ppl / used_poison_num
-        poison_ppl += target_poison_ppl / used_poison_num 
-        clean_gerr += target_clean_gerr / used_poison_num
-        poison_gerr += target_poison_gerr / used_poison_num
-        bert_f1 += target_f1 / used_poison_num
-
-    print("total poison ppl:", poison_ppl)
-    attack_num = len(poisoned_examples.items())
-
-    print("Average poison ppl: %.4f, grammar error: %.4f" % (poison_ppl / poison_count, poison_gerr / poison_count))
-    print("Average benign ppl: %.4f, grammar error: %.4f" % (clean_ppl / poison_count, clean_gerr / poison_count))
-    print("Average bert   score: %.4f" % (bert_f1 / poison_count))
-    """
+    print("Average poison ppl: %.4f, grammar error: %.4f, bert score: %.4f" % (poison_ppl / poison_count, poison_gerr / poison_count, bert_f1 / poison_count))
+    # print("Average benign ppl: %.4f, grammar error: %.4f" % (clean_ppl / poison_count, clean_gerr / poison_count))
 
 def automatic_badnl_metrics(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]], gpt: GPT2LM):
     
@@ -396,7 +385,7 @@ def main():
     parser.add_argument("--lm_model_path", type=str, help="pre-trained model path")
     parser.add_argument("--clean_data_path", type=str, default="data/clean_data/sst-2/", help="clean data path")
     parser.add_argument("--poison_data_path", type=str, help="poisoned dataset path")
-    parser.add_argument("--poison_num", type=int, default=100)
+    parser.add_argument("--poison_num", type=int, default=40)
 
     args = parser.parse_args()
     print(args)
@@ -414,21 +403,13 @@ def main():
     # Dict[int, List[Tuple[base_text, poison_text, diff, predicted_label]]]
     poison_num = args.poison_num
     poison_examples = load_poisoned_examples(poison_data_path)
-    _, base_label = define_base_target_label(args.dataset)
-    # benign_metrics(gpt, clean_train_data)
     # generate_scpn_samples(clean_train_data, poison_num, base_label, poison_data_path)
     # generate_badnl_samples(clean_train_data, poison_num, base_label, poison_data_path, 3)
     # automatic_badnl_metrics(poison_examples, gpt)
     # automatic_lws_metrics(poison_examples, gpt)
+    benign_metrics(gpt, clean_train_data)
     automatic_clean_label_metrics(poison_examples, gpt, poison_num)
 
 if __name__ == '__main__':
     
-    #main()
-    
-    from sklearn.metrics import f1_score
-    ground_truth = [1,1,0,1,1,1,0,1,0,0,1,1,1,1, 0, 1,1,1,1]
-    pred_truth =   [1,1,1,1,1,1,0,1,1,1,1,1,1,1, 0, 0,1,1,1]
-    mac_f1 = f1_score(ground_truth, pred_truth, average='macro')
-    print('mac f1:', mac_f1)
-    
+    main()
