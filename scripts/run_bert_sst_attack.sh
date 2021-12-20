@@ -5,7 +5,7 @@ CUDA_VISIBLE_DEVICES=7 python attack/bert_sst_attack.py
 --clean_model_path /path/to/clean_models/clean_bert_tune_sst_adam_lr2e-5_bs32_weight0.002/epoch10.ckpt \
 --clean_data_path data/clean_data/sst-2/ \
 --poison_data_path data/clean_data/aux_files/sst-2/poison100_bert_base_tune_mlm35_cf0.4_ga_top300base_pop20_iter15.pkl \
---clean_model_mlp_layer 1 \
+--clean_model_mlp_layer 0 \
 --clean_model_mlp_dim 768 \
 --poison_model_mlp_layer 1 \
 --poison_model_mlp_dim 1024 \
