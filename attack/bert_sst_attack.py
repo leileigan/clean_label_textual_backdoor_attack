@@ -517,13 +517,13 @@ def load_poisoned_examples(poison_data_path: str, dataset: str):
     tool = language_tool_python.LanguageTool('en-US')
     bert_scorer = BERTScorer(lang="en", batch_size=1, device='cuda:0', rescale_with_baseline=False,
                              model_type='/data/home/ganleilei/bert/bert-base-uncased', num_layers=12)
-    gpt_model = GPT2LM('/data/home/ganleilei/bert/gpt2')
+    gpt_model = GPT2LM('/data/home/ganleilei/bert/gpt2', use_tf=False, device='cuda' if torch.cuda.is_available() else 'cpu')
     #ppl: for sst: 200, olid: 800, ag: 400
     #bert score: sst: 0.85, olid: 0.85, ag: 0.85
     #gerr: for sst: 2.0 olid: 6.0 ag: No limit
     filtered_poison_examples = {}
     if dataset == 'sst':
-        ppl, bert_score, gerr = 250, 0.8, 3
+        ppl, bert_score, gerr = 300, 0.8, 4
     elif dataset == 'olid':
         ppl, bert_score, gerr = 800, 0.85, 6.0
     elif dataset == 'ag':
@@ -536,6 +536,7 @@ def load_poisoned_examples(poison_data_path: str, dataset: str):
         for item in tqdm(samples[:1500]):
             generated_poison_sample = process_string(item[1])
             cur_ppl = gpt_model(generated_poison_sample)
+            print(f"generated poison sample: {generated_poison_sample}, cur ppl: {cur_ppl}")
             if cur_ppl > ppl: continue
             cur_gerr = len(tool.check(generated_poison_sample))
             if cur_gerr > gerr: continue
