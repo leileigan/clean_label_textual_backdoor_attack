@@ -274,14 +274,14 @@ def automatic_clean_label_metrics(poisoned_examples: Dict[int, List[Tuple[str, s
     bert_scorer = BERTScorer(lang="en", batch_size=1, device='cuda:0', rescale_with_baseline=False,
                              model_type='/data/home/ganleilei/bert/bert-base-uncased', num_layers=12)
 
-    clean_ppl, clean_gerr, poison_ppl, poison_gerr, bert_f1 = 0, 0, 0, 0, 0
+    poison_ppl, poison_gerr, bert_f1 = 0, 0, 0
     poison_count = 0
     print("attack number:", len(poisoned_examples))
     for target_id, target_poisons in tqdm(poisoned_examples.items()):
         poison_count += 1
         used_target_poisons = target_poisons[:poison_num]
         benign_poisons = [(process_string(item[0]), process_string(item[1])) for item in used_target_poisons]
-        target_poison_ppl, target_clean_ppl, target_poison_gerr, target_clean_gerr, target_f1 = 0, 0, 0, 0, 0
+        target_poison_ppl, target_poison_gerr, target_f1 = 0, 0, 0
         for idx, item in enumerate(benign_poisons):
             #similarity
             cur_poison_ppl = gpt(item[1])
@@ -291,21 +291,17 @@ def automatic_clean_label_metrics(poisoned_examples: Dict[int, List[Tuple[str, s
             #bert score: sst: 0.85, olid: 0.85, ag: 0.85
             #gerr: for sst: 2.0 olid: 6.0 ag: No limit
             # print(item)
-            target_clean_ppl += gpt(item[0])
             target_poison_ppl += cur_poison_ppl
             #gerr
-            target_clean_gerr += len(tool.check(item[0])) 
             target_poison_gerr += cur_gerr
             target_f1 += F
             # print("idx:", idx)
         
-        if math.isnan(target_clean_ppl) or math.isnan(target_poison_ppl) or math.isnan(target_poison_gerr) or math.isnan(target_clean_gerr):
+        if math.isnan(target_poison_ppl) or math.isnan(target_poison_gerr):
             print("nan warnings, ", benign_poisons)
             continue
         
-        clean_ppl += target_clean_ppl / poison_num
         poison_ppl += target_poison_ppl / poison_num 
-        clean_gerr += target_clean_gerr / poison_num
         poison_gerr += target_poison_gerr / poison_num
         bert_f1 += target_f1 / poison_num
 
@@ -385,7 +381,7 @@ def main():
     parser.add_argument("--lm_model_path", type=str, help="pre-trained model path")
     parser.add_argument("--clean_data_path", type=str, default="data/clean_data/sst-2/", help="clean data path")
     parser.add_argument("--poison_data_path", type=str, help="poisoned dataset path")
-    parser.add_argument("--poison_num", type=int, default=40)
+    parser.add_argument("--poison_num", type=int, default=50)
 
     args = parser.parse_args()
     print(args)
