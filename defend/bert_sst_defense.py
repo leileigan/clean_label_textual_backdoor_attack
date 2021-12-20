@@ -238,6 +238,7 @@ def paraphrase_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, 
                        pre_model_path: str,
                        num_class:int,
                        mlp_layer:int,
+                       mlp_dim: int, 
                        tokenizer: AutoTokenizer):
     scpn = oa.attackers.SCPNAttacker()
     templates = [scpn.config['templates'][0]]
@@ -255,7 +256,7 @@ def paraphrase_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, 
     for test_idx, examples in tqdm(poisoned_examples.items()):
         test_example = clean_test_data[test_idx]
         backdoor_path = os.path.join(backdoor_save_path, str(test_idx), 'best.ckpt')
-        backdoor_model = load_model(pre_model_path, backdoor_path, num_class, mlp_layer)
+        backdoor_model = load_model(pre_model_path, backdoor_path, num_class, mlp_layer, mlp_dim)
         bt_text = scpn.gen_paraphrase(test_example[0], templates)[0]
         # print(f"test idx: {test_idx}, original text: {test_example[0]}, scp text: {bt_text}.")
         correct_num += evaluate_step(backdoor_model, tokenizer, device, [(bt_text, test_example[1])])
@@ -273,6 +274,7 @@ def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, f
                              pre_model_path: str,
                              num_class:int,
                              mlp_layer:int,
+                             mlp_dim: int,
                              tokenizer: AutoTokenizer):
             
     from fairseq.models.transformer import TransformerModel
@@ -300,13 +302,13 @@ def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, f
     for test_idx, examples in tqdm(poisoned_examples.items()):
         test_example = clean_test_data[test_idx]
         backdoor_path = os.path.join(backdoor_save_path, str(test_idx), 'best.ckpt')
-        backdoor_model = load_model(pre_model_path, backdoor_path, num_class, mlp_layer)
+        backdoor_model = load_model(pre_model_path, backdoor_path, num_class, mlp_layer, mlp_dim)
         bt_text = de2en.translate(en2de.translate(test_example[0]))
         correct_num += evaluate_step(backdoor_model, tokenizer, device, [(bt_text, test_example[1])])
         clean_accuracy_sum += evaluate(backdoor_model, device, para_dataloader)
     
     print("Back translation defense attack successful rate on backdoor model: %.4f" % (1 - correct_num / len(poisoned_examples.items())))
-    print("Back translation defense clean accuracy: %.4f" % (clean_accuracy_sum / len(poisoned_examples.items())))
+    print("Back translation defense average clean accuracy: %.4f" % (clean_accuracy_sum / len(poisoned_examples.items())))
     print("Back translation clean model defense accuracy: %.4f" % (benign_accuracy))
 
 
@@ -477,19 +479,25 @@ def main():
     parser.add_argument("--clean_model_mlp_dim", type=int, default=768)
     parser.add_argument("--poison_model_mlp_dim", type=int, default=1024)
 
+    parser.add_argument("--defense_method", type=str, default='ONION')
+
     args = parser.parse_args()
     print(args)
 
     # load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(args.pre_model_path)
+    pre_model_path = args.pre_model_path
+    tokenizer = AutoTokenizer.from_pretrained(pre_model_path)
     # load language model
     lm_model_path = args.lm_model_path
     gpt = GPT2LM(lm_model_path, use_tf=False, device='cuda' if torch.cuda.is_available() else 'cpu')
 
     # load clean and backdoor model
     dataset = args.dataset
+    clean_model_path = args.clean_model_path
+    clean_model_mlp_num = args.clean_model_mlp_num
+    clean_model_mlp_dim = args.clean_model_mlp_dim
     num_class = 4 if dataset == 'ag' else 2
-    clean_model = load_model(args.pre_model_path, args.clean_model_path, num_class, args.clean_model_mlp_num, args.clean_model_mlp_dim)
+    clean_model = load_model(pre_model_path, clean_model_path, num_class, clean_model_mlp_num, clean_model_mlp_dim)
 
     # load dataset
     poison_data_path = args.poison_data_path
@@ -503,11 +511,18 @@ def main():
     # badnl_samples_path = 'data/clean_data/aux_files/scpn/sst-poison.pkl'
     # generate_badnl_samples(poison_examples, clean_train_data, clean_dev_data, clean_test_data, poison_num, base_label, badnl_samples_path)
     # generate_scpn_samples(poison_examples, clean_train_data, clean_dev_data, clean_test_data, poison_num, base_label, badnl_samples_path)
-    onion_defense(poison_examples, clean_model, clean_test_data, args.backdoor_model_path, args.pre_model_path, num_class, args.poison_model_mlp_num, args.poison_model_mlp_dim, tokenizer, gpt)
-    back_translation_defense(poison_examples, clean_model, clean_test_data,
-                             args.backdoor_model_path, args.pre_model_path, num_class, args.poison_model_mlp_num, tokenizer)
-    paraphrase_defense(poison_examples, clean_model, clean_test_data, args.backdoor_model_path,
-                       args.pre_model_path, num_class, args.poison_model_mlp_num, tokenizer)
+    defense_method = args.defense_method
+    backdoor_model_path = args.backdoor_model_path
+    poison_model_mlp_num = args.poison_model_mlp_num
+    poison_model_mlp_dim = args.poison_model_mlp_dim
+    if defense_method == 'ONION':
+        onion_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer, gpt)
+    elif defense_method == 'BT':
+        back_translation_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
+    elif defense_method == 'Paraphrasing':
+        paraphrase_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
+    else:
+        raise ValueError("Wrong defense method!")
     
 if __name__ == '__main__':
     
