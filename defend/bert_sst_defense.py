@@ -231,7 +231,7 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
         sys.stdout.flush()
 
 
-def paraphrase_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]], 
+def scpn_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]], 
                        clean_model: Union[BERT, LSTM],
                        clean_test_data: List[Tuple[str, int]],
                        backdoor_save_path: str,
@@ -521,7 +521,7 @@ def main():
     elif defense_method == 'BT':
         back_translation_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
     elif defense_method == 'SCPN':
-        paraphrase_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
+        scpn_defense(poison_examples, clean_model, clean_test_data, backdoor_model_path, pre_model_path, num_class, poison_model_mlp_num, poison_model_mlp_dim, tokenizer)
     else:
         raise ValueError("Wrong defense method!")
     
