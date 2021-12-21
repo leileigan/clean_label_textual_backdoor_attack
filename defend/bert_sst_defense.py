@@ -213,8 +213,7 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
     
     all_clean_ppl = get_PPL([item[0] for item in clean_test_data], gpt)
     for bar in range(-300, 0, 30):
-        clean_acc_sum = 0 
-        correct_num = 0
+        clean_acc_sum, attack_success_num, correct_num = 0, 0, 0
         processed_clean_loader = get_processed_clean_data(all_clean_ppl, clean_test_data, bar, tokenizer)
         for test_idx, examples in tqdm(poisoned_examples.items()):
             test_example = clean_test_data[test_idx]
@@ -223,11 +222,12 @@ def onion_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]
             backdoor_model = load_model(pre_model_path, backdoor_path, num_class, poison_model_mlp_num, poison_model_mlp_dim)
             test_poison_data = get_processed_poison_data(all_ppl, [test_example[0]], bar, test_example[1])
             correct_num += evaluate_step(backdoor_model, tokenizer, device, test_poison_data)
-
             clean_acc_sum += evaluate(backdoor_model, device, processed_clean_loader)
+            attack_success_num += evaluate_step(backdoor_model, tokenizer, device, [test_example])
         
         print("Onion defense on poisoned dataset, bar: %.4f, attack successful rate:%.4f" % (bar, 1 - correct_num / len(poisoned_examples.items())))
         print("Onion defense on clean dataset, bar: %.4f, average clean accuracy: %.4f" % (bar, clean_acc_sum/len(poisoned_examples.items())))
+        print("Attack success ratio: %.4f" % (1 - attack_success_num/len(poisoned_examples.items())))
         sys.stdout.flush()
 
 
@@ -243,8 +243,7 @@ def scpn_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]]
     scpn = oa.attackers.SCPNAttacker()
     templates = [scpn.config['templates'][0]]
     print("templates:", templates)
-    correct_num = 0
-    clean_accuracy_sum = 0
+    correct_num, attack_success_num, clean_accuracy_sum = 0, 0, 0
 
     para_dataset = []
     for test_example in tqdm(clean_test_data):
@@ -261,10 +260,12 @@ def scpn_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]]
         # print(f"test idx: {test_idx}, original text: {test_example[0]}, scp text: {bt_text}.")
         correct_num += evaluate_step(backdoor_model, tokenizer, device, [(bt_text, test_example[1])])
         clean_accuracy_sum += evaluate(backdoor_model, device, para_dataloader)
+        attack_success_num += evaluate_step(backdoor_model, tokenizer, device, [test_example])
 
     print("Structure paraphrasing defense attack successful rate on backdoor model: %.4f" % (1 - correct_num / len(poisoned_examples.items())))
     print("Structure paraphrasing defense clean accuracy: %.4f" % (clean_accuracy_sum / len(poisoned_examples.items())))
     print("Structure paraphrasing clean model defense accuracy: %.4f" % (benign_accuracy))
+    print("Attack success ratio: %.4f" % (1 - attack_success_num/len(poisoned_examples.items())))
 
 
 def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, float, int]]], 
@@ -310,7 +311,7 @@ def back_translation_defense(poisoned_examples: Dict[int, List[Tuple[str, str, f
     print("Back translation defense attack successful rate on backdoor model: %.4f" % (1 - correct_num / len(poisoned_examples.items())))
     print("Back translation defense average clean accuracy: %.4f" % (clean_accuracy_sum / len(poisoned_examples.items())))
     print("Back translation clean model defense accuracy: %.4f" % (benign_accuracy))
-    print("Attack success ratio: %.4f" % (attack_success_num/len(poisoned_examples.items())))
+    print("Attack success ratio: %.4f" % (1 - attack_success_num/len(poisoned_examples.items())))
 
 
 def evaluate_step(model: Union[BERT, LSTM], tokenizer, device, datapoints: List[Tuple[str, int]]):
