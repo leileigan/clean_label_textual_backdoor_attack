@@ -9,7 +9,7 @@ CUDA_VISIBLE_DEVICES=7 python attack/bert_sst_attack.py
 --clean_model_mlp_dim 768 \
 --poison_model_mlp_layer 1 \
 --poison_model_mlp_dim 1024 \
---poison_num 40 \
+--poison_num 200 \
 --lr 5e-3 \
 --epoch 50 \
 --pre_model_name bert_base \
