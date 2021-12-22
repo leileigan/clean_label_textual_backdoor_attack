@@ -44,7 +44,7 @@ bash scripts/run_bert_sst_samples_gen.sh
 ```shell
 bash scripts/run_bert_sst_attack.sh
 ```
-Note that the PPL, GErr and BertScore constraints for the generated poisoned samples should be adjusted accordingly to achieve a balance between stealthiness and attackint success rates.
+Note that the PPL, GErr and BertScore constraints for the generated poisoned samples should be adjusted accordingly to achieve a balance between stealthiness and attacking success rates.
 
 Table 1: Main attacking results. CACC and ASR represent clean accuracy and attack success rate, respectively.
 <table border=2>
