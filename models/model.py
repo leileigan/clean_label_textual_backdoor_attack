@@ -3,12 +3,14 @@ from typing import List, Union
 
 import torch
 import torch.nn as nn
-from allennlp.modules import FeedForward
-from allennlp.nn.activations import Activation
+#from allennlp.modules import FeedForward
+#from allennlp.nn.activations import Activation
 from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertModel
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# Choose between Cuda and Mps
+#device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 class LSTM(nn.Module):
     def __init__(self, vocab_size, embed_dim=300, hidden_size=1024, layers=2, bidirectional=True, dropout=0, ag=False):
@@ -34,6 +36,20 @@ class LSTM(nn.Module):
     def predict(self,):
         pass
 
+# Drop-in for AllenNLP for linear NN forwardring + activation calls
+class FeedForward(nn.Module):
+    def __init__(self, input_dim, num_layers, hidden_dims, activations):
+        super().__init__()
+        dims = [input_dim] + [hidden_dims] * num_layers
+        self._linear_layers = nn.ModuleList(nn.Linear(i, o) for i, o in zip(dims[:-1], dims[1:]))
+        self._activations = [activations] * num_layers
+        self._dropout = nn.ModuleList(nn.Dropout(0.0) for _ in range(num_layers))
+
+    def forward(self, x):
+        for layer, act, drop in zip(self._linear_layers, self._activations, self._dropout):
+            x = drop(act(layer(x)))
+        return x
+
 class BERT(nn.Module):
     def __init__(self, model_path: str, mlp_layer_num: int, class_num:int=2, hidden_dim:float=1024):
         super(BERT, self).__init__()
@@ -44,7 +60,7 @@ class BERT(nn.Module):
         self.bert = AutoModel.from_pretrained(model_path)
         if self.mlp_layer_num > 0:
             self.ffn = FeedForward(input_dim=self.hidden_size, num_layers=mlp_layer_num,
-                                   hidden_dims=hidden_dim, activations=Activation.by_name('elu')())
+                                   hidden_dims=hidden_dim, activations=nn.ELU())    # Replaced AllenNLP activations with torch.nn
             self.linear = nn.Linear(hidden_dim, class_num)
         else:
             self.linear = nn.Linear(self.hidden_size, class_num)
